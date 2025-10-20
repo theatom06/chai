@@ -1,6 +1,8 @@
 {
   "name": "chai",
-  "module": "index.ts",
+  "version": "0.0.1",
+  "description": "The Universal Package Manager",
+  "module": "code/index.ts",
   "type": "module",
   "private": true,
   "devDependencies": {
