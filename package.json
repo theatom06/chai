@@ -5,8 +5,17 @@
   "module": "code/index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "lint": "eslint . --ext .js,.ts",
+    "format": "prettier --write \"**/*.{js,ts,json,md}\"",
+    "check:style": "prettier --check \"**/*.{js,ts,json,md}\""
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "eslint": "^8.46.0",
+    "prettier": "^2.8.8",
+  "@typescript-eslint/parser": "^5.63.0",
+  "@typescript-eslint/eslint-plugin": "^5.63.0"
   },
   "peerDependencies": {
     "typescript": "^5"
