@@ -23,7 +23,7 @@ const commandModules = [
   'remove',
   'sip',
   'update',
-  'upgrade'
+  'upgrade',
 ];
 
 async function registerCommands() {
@@ -35,14 +35,17 @@ async function registerCommands() {
       } else {
         chai
           .command(name)
-          .description(`${name} (placeholder - no register export)`) 
+          .description(`${name} (placeholder - no register export)`)
           .action(() => console.log(`${name} command not implemented`));
       }
-    } catch (err) {
+    } catch (err: unknown) {
       chai
         .command(name)
-        .description(`${name} (placeholder - module failed to load)`) 
-        .action(() => console.log(`${name} command failed to load:`, err?.message || err));
+        .description(`${name} (placeholder - module failed to load)`)
+        .action(() => {
+          const message = err instanceof Error ? err.message : String(err);
+          console.log(`${name} command failed to load:`, message);
+        });
     }
   }
 }

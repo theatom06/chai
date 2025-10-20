@@ -11,16 +11,19 @@
     "check:style": "prettier --check \"**/*.{js,ts,json,md}\""
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "eslint": "^8.46.0",
-    "prettier": "^2.8.8",
-  "@typescript-eslint/parser": "^5.63.0",
-  "@typescript-eslint/eslint-plugin": "^5.63.0"
+    "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "commander": "^14.0.1"
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.38.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.2",
+    "@typescript-eslint/parser": "^8.46.2",
+    "commander": "^14.0.1",
+    "eslint": "^9.38.0",
+    "globals": "^16.4.0",
+    "prettier": "^3.6.2"
   }
 }
