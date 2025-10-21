@@ -7,17 +7,15 @@ import satisfies from '../../lib/semver/satisfies.js';
  * Picks a version from a list given an optional semver range and dist-tags.
  * Prefers dist-tag (e.g., latest) when no range is provided; otherwise highest satisfying.
  */
-export function pickVersion(
-  versions: string[],
-  range?: string,
-  distTags?: Record<string, string>
-): string | undefined {
+export function pickVersion(versions: string[], range?: string, distTags?: Record<string, string>): string | undefined {
   if (!versions?.length) return undefined;
+
   if (!range) {
     if (distTags?.latest && versions.includes(distTags.latest)) return distTags.latest;
     const sorted = sort(versions, false) as unknown as string[];
     return sorted[sorted.length - 1];
   }
+
   const candidates = versions.filter((v) => {
     try {
       return satisfies(v, range as string);

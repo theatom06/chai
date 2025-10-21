@@ -1,4 +1,4 @@
-export type RegistryKind = 'npm' | 'python' | 'github' | 'system' | 'chai';
+export type RegistryKind = 'npm' | 'python' | 'github' | 'system'; //| 'chai' (Upcoming)
 
 export interface PackageMetadata {
   name: string;
@@ -11,13 +11,21 @@ export interface PackageMetadata {
 }
 
 export interface RegistryAdapter {
+  // The kind of registry (npm, python, github, etc)
   kind: RegistryKind;
-  /** Resolve an identifier like npm:chalk or gh:user/repo or plain name scoped to this registry */
-  resolveIdentifier(identifier: string): { name: string; scope?: string };
-  /** Fetch metadata about a package; range can be semver or tag like latest */
+
+  // Resolve identifiers like npm:chalk or gh:user/repo
+  resolveIdentifier(identifier: string): {
+    name: string;
+    scope?: string 
+  };
+
+  // Fetch metadata about a package; range can be semver or tag like latest
   getMetadata(name: string, range?: string): Promise<PackageMetadata>;
-  /** List versions, optionally filtered by a semver range */
+
+  // List versions, optionally filtered by a semver range
   listVersions?(name: string, range?: string): Promise<string[]>;
-  /** Download a tarball or resource and return a local file path (placeholder for now) */
-  download?(meta: PackageMetadata): Promise<string>;
+
+  //Download a tarball or resource and return a local file path
+  download?(meta: PackageMetadata): Promise<void>;
 }
