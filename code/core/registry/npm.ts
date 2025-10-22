@@ -1,9 +1,9 @@
 import type { RegistryAdapter, PackageMetadata } from './types.ts';
-import { pickVersion } from './util.ts';
+import { pickVersion, createSymlink } from './util.ts';
 import { getCacheDir } from '../config/paths.ts';
 import path from 'path';
 import { createHash } from "crypto";
-import { PATHS } from '../../constants.ts';
+import { PATHS, ensureDir } from '../../constants.ts';
 
 async function downloadTarballAsync(url: string, dest: string, expectedIntegrity?: string): Promise<string> {
   const res = await fetch(url, { headers: { "Accept-Encoding": "identity" } });
@@ -22,7 +22,7 @@ async function downloadTarballAsync(url: string, dest: string, expectedIntegrity
       if (done) break;
       if (value) {
         hash.update(value);
-        await writer.write(value);
+        writer.write(value);
       }
     }
     await writer.end();
@@ -41,6 +41,33 @@ async function downloadTarballAsync(url: string, dest: string, expectedIntegrity
   return dest;
 }
 
+async function updatePackageDetails(targetDir: string, meta: PackageMetadata): Promise<void> {
+  const pkgPath = path.join(targetDir, 'package.json');
+  const pkg = Bun.file(pkgPath);
+
+  if (await pkg.exists()) {
+    const content = await Bun.file(pkgPath).json();
+    content.dependencies = content.dependencies || {};
+    content.dependencies[meta.name] = `^${meta.version}`;
+    await Bun.write(pkgPath, JSON.stringify(content, null, 2));
+  }
+
+  let pkgLockPath = path.join(targetDir, 'package-lock.json');
+  if(!await Bun.file(pkgLockPath).exists()) {
+    return;
+  }
+
+  const lockContent = await Bun.file(pkgLockPath).json();
+  lockContent.dependencies = lockContent.dependencies || {};
+  lockContent.dependencies[meta.name] = {
+    version: `^${meta.version}`,
+    resolved: meta.dist?.tarball || '',
+    integrity: meta.dist?.shasum || '',
+  };
+  await Bun.write(pkgLockPath, JSON.stringify(lockContent, null, 2));
+  
+  return;
+}
 
 /**
  * NPM registry adapter
@@ -56,15 +83,18 @@ const npmAdapter: RegistryAdapter = {
     const at = id.lastIndexOf('@');
     let name = id;
     let range: string | undefined;
-    if (at > 0) {
+
+    if (at > 0) { // ensure it's not the scope '@'
       name = id.slice(0, at);
       range = id.slice(at + 1);
     }
+
     name = name.trim();
     if (!name) throw new Error(`Invalid npm identifier: ${identifier}`);
     return { name, range };
   },
 
+  // Fetch package metadata from npm registry
   async getMetadata(name: string, range?: string): Promise<PackageMetadata> {
     const url = `https://registry.npmjs.org/${encodeURIComponent(name)}`;
     const res = await fetch(url);
@@ -86,6 +116,8 @@ const npmAdapter: RegistryAdapter = {
     };
     return meta;
   },
+
+  // List all versions of a package
   async listVersions(name: string): Promise<string[]> {
     const url = `https://registry.npmjs.org/${encodeURIComponent(name)}`;
     const res = await fetch(url);
@@ -94,11 +126,19 @@ const npmAdapter: RegistryAdapter = {
     return Object.keys(data.versions || {});
   },
 
+  // Download package tarball to cache
   async download(meta: PackageMetadata): Promise<void> {
     if (!meta?.dist?.tarball) throw new Error('No tarball URL in npm metadata');
     const cache = getCacheDir();
     const file = path.join(cache, 'npm', `${meta.name}-${meta.version}.tgz`);
     await downloadTarballAsync(meta.dist.tarball, file, meta.dist.shasum);
+
+    const unzipDir = path.join(PATHS.registryPackages.npm, `${meta.name}/${meta.version}`);
+    ensureDir(unzipDir);
+    
+    await Bun.$`tar -xzf ${file} -C ${unzipDir} --strip-components=1`;
+
+    updatePackageDetails(process.cwd(), meta);
 
     return;    
   },

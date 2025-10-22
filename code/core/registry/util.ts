@@ -29,19 +29,6 @@ export function pickVersion(versions: string[], range?: string, distTags?: Recor
 }
 
 /**
- * Downloads a URL into a destination file path.
- * Returns the absolute path of the saved file.
- */
-export async function downloadToFileAsync(url: string, destPath: string): Promise<string> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to download ${url}: ${res.status} ${res.statusText}`);
-  const buf = Buffer.from(await res.arrayBuffer());
-  await fs.mkdir(path.dirname(destPath), { recursive: true });
-  await fs.writeFile(destPath, buf);
-  return destPath;
-}
-
-/**
  * Parses identifiers like `npm:chalk@^5`, `gh:user/repo@v1.2.3`, `py:requests`, or bare `chalk`.
  */
 export function parseIdentifier(identifier: string): {
@@ -64,4 +51,14 @@ export function parseIdentifier(identifier: string): {
     range = id.slice(at + 1);
   }
   return { prefix, name, range };
+}
+
+export function createSymlink(from: string, to: string): Promise<void> {
+  return fs.symlink(from, to, 'junction').catch(async (err) => {
+    if (err.code === 'EEXIST') {
+      await fs.unlink(to);
+      return fs.symlink(from, to, 'junction');
+    }
+    throw err;
+  });
 }
