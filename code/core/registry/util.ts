@@ -53,12 +53,18 @@ export function parseIdentifier(identifier: string): {
   return { prefix, name, range };
 }
 
-export function createSymlink(from: string, to: string): Promise<void> {
-  return fs.symlink(from, to, 'junction').catch(async (err) => {
+export async function createSymlink(from: string, to: string): Promise<void> {
+  if (await fs.exists(to)) {
+        await fs.mkdir(to, { recursive: true });
+  }
+
+  try {
+    return await fs.symlink(from, to, 'junction');
+  } catch (err: any) {
     if (err.code === 'EEXIST') {
       await fs.unlink(to);
       return fs.symlink(from, to, 'junction');
     }
     throw err;
-  });
+  }
 }

@@ -24,8 +24,8 @@ export interface RegistryAdapter {
   getMetadata(name: string, range?: string): Promise<PackageMetadata>;
 
   // List versions, optionally filtered by a semver range
-  listVersions?(name: string, range?: string): Promise<string[]>;
+  listVersions(name: string, range?: string): Promise<string[]>;
 
   //Download a tarball or resource and return a local file path
-  download?(meta: PackageMetadata): Promise<void>;
+  download(meta: PackageMetadata): Promise<void>;
 }

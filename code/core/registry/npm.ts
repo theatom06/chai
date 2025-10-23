@@ -128,6 +128,15 @@ const npmAdapter: RegistryAdapter = {
 
   // Download package tarball to cache
   async download(meta: PackageMetadata): Promise<void> {
+    if(!meta.name || !meta.version) {
+      throw new Error('Invalid package metadata: missing name or version');
+    }
+
+    if(await Bun.file(path.join(PATHS.registryPackages.npm, `${meta.name}/${meta.version}`)).exists()) {
+      updatePackageDetails(process.cwd(), meta);
+      return;
+    }
+
     if (!meta?.dist?.tarball) throw new Error('No tarball URL in npm metadata');
     const cache = getCacheDir();
     const file = path.join(cache, 'npm', `${meta.name}-${meta.version}.tgz`);
@@ -139,6 +148,36 @@ const npmAdapter: RegistryAdapter = {
     await Bun.$`tar -xzf ${file} -C ${unzipDir} --strip-components=1`;
 
     updatePackageDetails(process.cwd(), meta);
+    createSymlink(unzipDir, path.join('node_modules', meta.name))
+      .catch((err) => {
+        console.error(`Failed to create symlink for ${meta.name}:`, err);
+      });
+
+    const pkgJsonPath = path.join(unzipDir, 'package.json');
+    const pkgJson = Bun.file(pkgJsonPath);
+    if (!await pkgJson.exists()) {
+      throw new Error(`Downloaded package is missing package.json: ${meta.name}@${meta.version}`);
+    }
+
+    const pkgDependencies = (await pkgJson.json()).dependencies || {};
+    for (const [depName, depRange] of Object.entries<string>(pkgDependencies)) {
+      const depIdentifier = `npm:${depName}@${depRange}`;
+      const { name: resolvedDepName, version: resolvedDepRange } = this.resolveIdentifier(depIdentifier) as { name: string; version?: string };
+      const depMeta = await this.getMetadata(resolvedDepName, resolvedDepRange);
+      await this.download(depMeta);
+    }
+
+    // Run postinstall script if defined
+    const scripts = (await pkgJson.json()).scripts || {};
+    if (scripts.postinstall) {
+      console.log(`Running postinstall script for ${meta.name}@${meta.version}...`);
+      try {
+      await Bun.$`cd ${unzipDir} && ${scripts.postinstall}`.quiet();
+      } catch (err) {
+      console.error(`Postinstall script failed for ${meta.name}:`, err);
+      // Non-fatal: continue with installation
+      }
+    }
 
     return;    
   },
